@@ -1,0 +1,45 @@
+# Environment variables (sensitive)
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+**/logs/
+*.out
+
+# Build artifacts (Đã thêm **/ để áp dụng cho mọi service con)
+**/target/
+**/dist/
+**/build/
+**/out/
+
+# Dependencies (Đã thêm **/ để áp dụng cho mọi service con)
+**/node_modules/
+**/package-lock.json
+**/yarn.lock
+
+# Cache
+**/.cache/
+**/.eslintcache
+
+# Coverage reports
+**/coverage/
+**/.nyc_output/
+
+# Misc
+*.pid
+*.seed
+docker-compose.override.yml

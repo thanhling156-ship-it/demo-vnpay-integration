@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka_local
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+      # Giữ localhost:9092 để các service ở ngoài máy host gọi vào được
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui_local
+    ports:
+      - "7777:7777"  # Bạn có thể đổi sang port khác nếu 8080 bị trùng
+    environment:
+      - DYNAMIC_CONFIG_ENABLED=true
+      - KAFKA_CLUSTERS_0_NAME=local-cluster
+      # Vì Kafka UI nằm chung network của Docker với Kafka, nó có thể gọi trực tiếp qua tên service là 'kafka:9092'
+      # Nhưng để đồng bộ với máy host, ta trỏ thẳng về IP của máy host thông qua gateway mặc định của Docker:
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=host.docker.internal:9092
+
+  transaction-db:
+    image: postgres:15-alpine
+    container_name: transaction-db
+    environment:
+      POSTGRES_DB: transaction_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+    ports:
+      - "5041:5432"
+    volumes:
+      - transaction_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d transaction_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - micro-network
+
+volumes:
+  transaction_data: # Lưu trữ dữ liệu lâu dài, không bị mất khi stop container
+
+networks:
+  micro-network:
+    driver: bridge
