@@ -1,6 +1,7 @@
 package com.example.vnpay_hub.controller;
 
 
+import com.example.event_library.PayResult;
 import com.example.event_library.VnpayTransaction;
 import com.example.vnpay_hub.entity.Transaction;
 import com.example.vnpay_hub.entity.TransactionStatus;
@@ -11,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -26,6 +28,7 @@ public class VNPayController {
     public final VNPayUtils utils;
     public final VNPayService service;
     public final TransactionRepository transactionRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @PostMapping("/order-request")
     public ResponseEntity<?> queryTransaction(
@@ -35,9 +38,13 @@ public class VNPayController {
         String vnp_IpAddr = utils.getIpAddress(request);
 
         System.out.println("IP khách hàng: " + vnp_IpAddr);
-        service.createParamURL(vnPayDTO, vnp_IpAddr);
+        String query = service.createParamURL(vnPayDTO, vnp_IpAddr);
 
-        return ResponseEntity.ok().build();
+        // Tạo một Map để đóng gói chuỗi URL thành định dạng JSON
+        Map<String, String> response = new HashMap<>();
+        response.put("query", query);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/vnpay-ipn")
@@ -92,6 +99,14 @@ public class VNPayController {
                 boolean isSuccess = "00".equals(responseCode) && "00".equals(transactionStatus);
                 tx.setStatus(isSuccess ? TransactionStatus.SUCCESS : TransactionStatus.FAILED);
                 transactionRepository.save(tx);
+
+                PayResult result =  new PayResult();
+                result.setOrderId(tx.getTxnRef());
+                result.setMessage("Đã xử lý thành công đơn hàng ");
+                result.setUserId(tx.getUserId());
+                result.setStatusCode("202");
+
+                kafkaTemplate.send("payment-notification", result);
 
                 System.out.println("====== CẬP NHẬT TRẠNG THÁI: " + tx.getStatus() + " ======");
                 response.put("RspCode", "00");

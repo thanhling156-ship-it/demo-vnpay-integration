@@ -8,16 +8,20 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Map;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class NotificationConsumer {
     private final NotificationHandler notificationHandler;
     private final ObjectMapper objectMapper;
-    @KafkaListener(topics = "create-transaction-success", groupId = "noti-group")
+    @KafkaListener(topics = "payment-notification", groupId = "noti-group")
     public void handleCreatingTransactionSuccess(PayResult event) {
         String userId = event.getUserId();
-        String messageJson = objectMapper.writeValueAsString(event);
+        Map<String, String> eventMap = objectMapper.convertValue(event, Map.class);
+        eventMap.remove("userId");
+        String messageJson = objectMapper.writeValueAsString(eventMap);
         notificationHandler.pushNotification(userId, messageJson);
     }
 }

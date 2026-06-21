@@ -46,6 +46,7 @@ public class NotificationHandler extends TextWebSocketHandler {
         if (session != null && session.isOpen()) {
             try {
                 // Nhờ có Decorator ở trên, lệnh này bây giờ có thể xếp hàng gửi an toàn, không sợ bị ghi đè luồng
+                log.info("Sending notification for userId: {}, message: {}", userId, message);
                 session.sendMessage(new TextMessage(message));
             } catch (IOException e) {
                 log.error("🚨 Lỗi khi gửi tin nhắn WebSocket cho User {}: {}", userId, e.getMessage());

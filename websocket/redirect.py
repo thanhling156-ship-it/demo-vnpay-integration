@@ -3,6 +3,8 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 app = FastAPI()
+
+# Giữ nguyên cấu hình domain gốc làm phương án dự phòng khi logout
 base_url = "http://localhost:6969/"
 
 @app.get("/api/v1/vnpay-callback", response_class=HTMLResponse)
@@ -101,7 +103,10 @@ async def vnpay_callback(request: Request):
                 border-radius: 6px;
                 font-weight: 500;
                 margin-top: 15px;
+                cursor: pointer;
                 transition: background 0.2s;
+                border: none;
+                font-size: 16px;
             }}
             .btn:hover {{
                 background-color: #004085;
@@ -114,8 +119,20 @@ async def vnpay_callback(request: Request):
             <h2>{status_title}</h2>
             <p>{status_message}</p>
             {"<div class='amount'>" + amount_formatted + " VND</div>" if vnp_response_code == "00" else ""}
-            <a href="{base_url}" class="btn">Quay lại trang chủ</a>
+            
+            <button onclick="handleReturnHome()" class="btn">Quay lại trang chủ</button>
         </div>
+
+        <script>
+            function handleReturnHome() {{
+                // Không kiểm tra localStorage ở cổng 8080 nữa, chuyển hướng thẳng về tab action của cổng 6969
+                // Trình duyệt sẽ mở tab mới chạy port 6969, lúc này localStorage của port 6969 sẽ tự đọc được dữ liệu
+                window.open("{base_url}action", "_blank");
+                
+                // Đóng tab kết quả VNPAY (cổng 8080)
+                window.close();
+            }}
+        </script>
     </body>
     </html>
     """

@@ -45,14 +45,6 @@ public class VNPayService {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, String> vnpayMap = objectMapper.convertValue(transaction, Map.class);
 
-        String userId = vnpayMap.get("userId");
-        vnpayMap.remove("userId");
-        vnpayMap.remove("requestId"); // Loại bỏ kẻ phá bĩnh chữ ký
-        vnpayMap.remove("vnp_SecureHash"); // Đảm bảo hash không tự băm chính
-        PayResult result = new PayResult();
-        result.setUserId(userId);
-        result.setOrderId(transaction.getVnp_TxnRef());
-
         String amountStr = transaction.getVnp_Amount(); // "10000000"
         Long amount = Long.parseLong(amountStr) / 100; // 100000 VND
 
@@ -61,34 +53,32 @@ public class VNPayService {
                 .amount(amount)
                 .status(TransactionStatus.PENDING)
                 .createdAt(LocalDateTime.now())
+                .userId(transaction.getUserId())
                 .build();
 
         transactionRepository.save(tx);
 
+        vnpayMap.remove("userId");
+        vnpayMap.remove("requestId"); // Loại bỏ kẻ phá bĩnh chữ ký
+        vnpayMap.remove("vnp_SecureHash"); // Đảm bảo hash không tự băm chính
+
+
+        String paymentUrl = "";
         try {
-            String paymentUrl = utils.generateSecureHash(vnpayMap);
+            paymentUrl = utils.generateSecureHash(vnpayMap);
             log.info("Payment URL: " + paymentUrl);
-            result.setMessage(paymentUrl);
-            result.setStatusCode("202");
-            sendStatus(result,"create-transaction-success");
         } catch (IllegalArgumentException e) {
             // Xử lý khi thiếu tham số đầu vào
             String errorMsg = String.format("Lỗi khởi tạo thanh toán: %s", e.getMessage());
             log.error(errorMsg);
-            result.setMessage(errorMsg);
-            result.setStatusCode("400");
-            sendStatus(result,"create-transaction-fail");
         } catch (UnsupportedEncodingException e) {
             // Xử lý lỗi hệ thống liên quan đến bảng mã mã hóa
             String errorMsg = String.format("Hệ thống không hỗ trợ bảng mã UTF-8 %s", e);
             log.error(errorMsg);
-            result.setMessage(errorMsg);
-            result.setStatusCode("400");
-            sendStatus(result,"create-transaction-fail");
             throw new RuntimeException("Lỗi cấu hình hệ thống.", e);
         }
         finally {
-            return "Hoàn tất đơn";
+            return paymentUrl;
         }
     }
 
